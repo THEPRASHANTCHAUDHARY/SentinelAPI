@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>SentinelAPI — API Security, Before Production</title>
+
+  <meta
+    name="description"
+    content="SentinelAPI automatically discovers and tests API vulnerabilities before they reach production."
+  />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- GSAP -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  <style>
+    :root {
+      --ink: #11110f;
+      --paper: #f1efe7;
+      --paper-2: #e7e4da;
+      --acid: #c9ff3d;
+      --acid-dark: #9bc900;
+      --orange: #ff7043;
+      --muted: #72736d;
+      --line: rgba(17, 17, 15, 0.14);
+      --white: #faf9f4;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Manrope", sans-serif;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    /* =========================
+       CURSOR
+    ========================= */
+
+    .cursor {
+      position: fixed;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--acid);
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: difference;
+      transform: translate(-50%, -50%);
+    }
+
+    /* =========================
+       NAV
+    ========================= */
+
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5vw;
+      z-index: 1000;
+
+      background: rgba(241, 239, 231, 0.75);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid transparent;
+
+      transition: 0.4s ease;
+    }
+
+    nav.scrolled {
+      border-color: var(--line);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-size: 20px;
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--ink);
+      color: var(--acid);
+      display: grid;
+      place-items: center;
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      transform: rotate(45deg);
+    }
+
+    .logo-mark span {
+      transform: rotate(-45deg);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .nav-links a {
+      position: relative;
+    }
+
+    .nav-links a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -5px;
+      width: 0;
+      height: 1px;
+      background: var(--ink);
+      transition: width 0.3s ease;
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    .nav-cta {
+      background: var(--ink);
+      color: var(--white);
+      padding: 13px 20px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      transition: 0.3s ease;
+    }
+
+    .nav-cta:hover {
+      background: var(--acid);
+      color: var(--ink);
+      transform: translateY(-2px);
+    }
+
+    /* =========================
+       HERO
+    ========================= */
+
+    .hero {
+      min-height: 100vh;
+      padding: 150px 5vw 70px;
+      display: grid;
+      grid-template-columns: 1fr 0.75fr;
+      gap: 5vw;
+      align-items: center;
+      position: relative;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      right: -180px;
+      top: 100px;
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 25px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--acid-dark);
+      border-radius: 50%;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(155, 201, 0, 0.5);
+      }
+
+      50% {
+        box-shadow: 0 0 0 8px rgba(155, 201, 0, 0);
+      }
+    }
+
+    .hero h1 {
+      font-size: clamp(64px, 8vw, 132px);
+      line-height: 0.88;
+      letter-spacing: -0.075em;
+      max-width: 900px;
+      font-weight: 800;
+    }
+
+    .hero h1 .accent {
+      color: var(--acid-dark);
+    }
+
+    .hero-description {
+      max-width: 440px;
+      margin-top: 32px;
+      color: #5e5f59;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 35px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 16px 24px;
+      border-radius: 100px;
+      border: 1px solid var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+      transition: 0.3s ease;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--ink);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      background: var(--acid);
+      color: var(--ink);
+      transform: translateY(-3px);
+    }
+
+    .btn-secondary:hover {
+      background: var(--ink);
+      color: var(--white);
+      transform: translateY(-3px);
+    }
+
+    /* =========================
+       SCANNER VISUAL
+    ========================= */
+
+    .scanner-wrap {
+      position: relative;
+      height: 520px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scanner {
+      width: min(500px, 90%);
+      background: #161614;
+      color: var(--white);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 30px 30px 0 rgba(17, 17, 15, 0.07);
+      transform: rotate(2deg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scanner::before {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      background: var(--acid);
+      filter: blur(90px);
+      opacity: 0.14;
+      right: -60px;
+      top: -60px;
+    }
+
+    .window-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .window-dots i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #555;
+    }
+
+    .window-title {
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      color: #999;
+    }
+
+    .scan-status {
+      margin-top: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+    }
+
+    .scan-status span {
+      color: #888;
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+    }
+
+    .scan-status strong {
+      font-size: 34px;
+      letter-spacing: -0.06em;
+    }
+
+    .progress {
+      margin-top: 16px;
+      width: 100%;
+      height: 5px;
+      background: #292927;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .progress div {
+      height: 100%;
+      width: 0;
+      background: var(--acid);
+    }
+
+    .finding {
+      margin-top: 18px;
+      padding: 15px;
+      background: #20201e;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .finding-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .finding-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(255,112,67,.15);
+      color: var(--orange);
+      font-family: "DM Mono", monospace;
+    }
+
+    .finding small {
+      display: block;
+      color: #777;
+      font-size: 9px;
+      margin-bottom: 3px;
+      font-family: "DM Mono", monospace;
+    }
+
+    .finding b {
+      font-size: 12px;
+    }
+
+    .severity {
+      color: var(--orange);
+      font-family: "DM Mono", monospace;
+      font-size: 9px;
+    }
+
+    .floating-tag {
+      position: absolute;
+      background: var(--acid);
+      color: var(--ink);
+      padding: 12px 15px;
+      border-radius: 100px;
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      font-weight: 600;
+      box-shadow: 10px 10px 0 rgba(17,17,15,.08);
+    }
+
+    .tag-one {
+      top: 65px;
+      right: 0;
+      transform: rotate(-7deg);
+    }
+
+    .tag-two {
+      bottom: 65px;
+      left: 0;
+      transform: rotate(6deg);
+    }
+
+    /* =========================
+       MARQUEE
+    ========================= */
+
+    .marquee {
+      overflow: hidden;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 20px 0;
+      white-space: nowrap;
+    }
+
+    .marquee-track {
+      display: inline-flex;
+      gap: 35px;
+      animation: marquee 22s linear infinite;
+    }
+
+    .marquee span {
+      font-size: 13px;
+      font-family: "DM Mono", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .marquee .star {
+      color: var(--acid-dark);
+      font-size: 18px;
+    }
+
+    @keyframes marquee {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    /* =========================
+       INTRO
+    ========================= */
+
+    .intro {
+      padding: 160px 5vw;
+      display: grid;
+      grid-template-columns: 0.4fr 1fr;
+      gap: 8vw;
+    }
+
+    .section-label {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: .1em;
+    }
+
+    .intro h2 {
+      font-size: clamp(45px, 6vw, 90px);
+      line-height: 0.95;
+      letter-spacing: -0.065em;
+      max-width: 1000px;
+    }
+
+    .intro h2 span {
+      color: var(--muted);
+    }
+
+    /* =========================
+       FEATURES
+    ========================= */
+
+    .features {
+      padding: 80px 5vw 160px;
+    }
+
+    .feature-grid {
+      margin-top: 60px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+
+    .feature {
+      min-height: 390px;
+      background: var(--paper-2);
+      border-radius: 20px;
+      padding: 30px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .4s ease;
+    }
+
+    .feature:hover {
+      transform: translateY(-8px);
+    }
+
+    .feature:nth-child(1) {
+      grid-column: span 7;
+    }
+
+    .feature:nth-child(2) {
+      grid-column: span 5;
+    }
+
+    .feature:nth-child(3) {
+      grid-column: span 5;
+    }
+
+    .feature:nth-child(4) {
+      grid-column: span 7;
+    }
+
+    .feature-number {
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .feature h3 {
+      position: absolute;
+      left: 30px;
+      bottom: 30px;
+      font-size: 34px;
+      letter-spacing: -0.05em;
+      max-width: 450px;
+    }
+
+    .feature p {
+      margin-top: 18px;
+      max-width: 330px;
+      font-size: 13px;
+      color: #65665f;
+      line-height: 1.6;
+    }
+
+    /* Visual circles */
+
+    .orbit {
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      border: 1px solid rgba(17,17,15,.18);
+      border-radius: 50%;
+      right: -30px;
+      top: 45px;
+    }
+
+    .orbit::before,
+    .orbit::after {
+      content: "";
+      position: absolute;
+      border: 1px solid rgba(17,17,15,.13);
+      border-radius: 50%;
+      inset: 30px;
+    }
+
+    .orbit::after {
+      inset: 75px;
+      background: var(--acid);
+      border: none;
+      box-shadow: 0 0 50px rgba(201,255,61,.3);
+    }
+
+    .scan-lines {
+      position: absolute;
+      right: 40px;
+      top: 70px;
+      width: 45%;
+    }
+
+    .scan-lines div {
+      height: 7px;
+      margin-bottom: 10px;
+      background: #b9b6ac;
+      border-radius: 20px;
+      transform-origin: left;
+      animation: linePulse 2s infinite alternate;
+    }
+
+    .scan-lines div:nth-child(2) {
+      width: 70%;
+      animation-delay: .2s;
+    }
+
+    .scan-lines div:nth-child(3) {
+      width: 85%;
+      animation-delay: .4s;
+    }
+
+    .scan-lines div:nth-child(4) {
+      width: 55%;
+      animation-delay: .6s;
+    }
+
+    @keyframes linePulse {
+      to {
+        transform: scaleX(.65);
+      }
+    }
+
+    /* =========================
+       WORKFLOW
+    ========================= */
+
+    .workflow {
+      background: var(--ink);
+      color: var(--white);
+      padding: 150px 5vw;
+    }
+
+    .workflow .section-label {
+      color: #777;
+    }
+
+    .workflow h2 {
+      font-size: clamp(50px, 7vw, 100px);
+      letter-spacing: -0.07em;
+      line-height: .9;
+      max-width: 900px;
+      margin-top: 30px;
+    }
+
+    .steps {
+      margin-top: 100px;
+      border-top: 1px solid rgba(255,255,255,.15);
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr;
+      gap: 30px;
+      padding: 40px 0;
+      border-bottom: 1px solid rgba(255,255,255,.15);
+      align-items: center;
+    }
+
+    .step-num {
+      color: var(--acid);
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+    }
+
+    .step h3 {
+      font-size: 34px;
+      letter-spacing: -0.05em;
+    }
+
+    .step p {
+      color: #92928c;
+      max-width: 430px;
+      line-height: 1.7;
+      font-size: 13px;
+    }
+
+    /* =========================
+       BIG CTA
+    ========================= */
+
+    .final {
+      padding: 170px 5vw;
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .final::after {
+      content: "SECURE";
+      position: absolute;
+      font-size: 24vw;
+      font-weight: 800;
+      letter-spacing: -0.09em;
+      color: rgba(17,17,15,.035);
+      right: -5vw;
+      bottom: -5vw;
+      pointer-events: none;
+    }
+
+    .final h2 {
+      font-size: clamp(60px, 10vw, 150px);
+      line-height: .85;
+      letter-spacing: -0.08em;
+      max-width: 1100px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .final h2 span {
+      color: var(--acid-dark);
+    }
+
+    .final p {
+      margin-top: 35px;
+      max-width: 500px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .final .btn {
+      width: fit-content;
+      margin-top: 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* =========================
+       FOOTER
+    ========================= */
+
+    footer {
+      padding: 30px 5vw;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: "DM Mono", monospace;
+      color: var(--muted);
+    }
+
+    /* =========================
+       REVEAL
+    ========================= */
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(50px);
+    }
+
+    /* =========================
+       MOBILE
+    ========================= */
+
+    @media (max-width: 900px) {
+
+      .nav-links {
+        display: none;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 130px;
+      }
+
+      .scanner-wrap {
+        height: 430px;
+      }
+
+      .intro {
+        grid-template-columns: 1fr;
+      }
+
+      .feature:nth-child(n) {
+        grid-column: span 12;
+      }
+
+      .step {
+        grid-template-columns: 50px 1fr;
+      }
+
+      .step p {
+        grid-column: 2;
+      }
+
+      .cursor {
+        display: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+
+      nav {
+        height: 70px;
+        padding: 0 20px;
+      }
+
+      .nav-cta {
+        padding: 11px 15px;
+      }
+
+      .hero,
+      .intro,
+      .features,
+      .workflow,
+      .final {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .hero h1 {
+        font-size: 64px;
+      }
+
+      .scanner {
+        width: 100%;
+      }
+
+      .floating-tag {
+        display: none;
+      }
+
+      .feature {
+        min-height: 330px;
+      }
+
+      .feature h3 {
+        font-size: 27px;
+      }
+
+      .workflow h2 {
+        font-size: 55px;
+      }
+
+      .step h3 {
+        font-size: 26px;
+      }
+
+      footer {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+      .severity[data-severity="CRITICAL"] { color: var(--red); }
+    .severity[data-severity="HIGH"] { color: var(--orange); }
+    .severity[data-severity="MEDIUM"] { color: #ffd166; }
+  </style>
+</head>
+
+<body>
+
+  <!-- Cursor -->
+  <div class="cursor"></div>
+
+  <!-- ================= NAV ================= -->
+
+  <nav id="nav">
+
+  <a href="main.html" class="logo">
+  <div class="logo-mark">
+    <span>+</span>
+  </div>
+  SENTINELAPI
+</a>
+
+    <div class="nav-links">
+      <a href="scanner.html">Scanner</a>
+      <a href="capabilities.html">Capabilities</a>
+      <a href="how-it-works.html">How it works</a>
+    </div>
+
+    <a href="scan-your-api.html" class="nav-cta">
+      Start scanning →
+    </a>
+
+  </nav>
+
+
+  <!-- ================= HERO ================= -->
+
+  <main>
+
+    <section class="hero">
+
+      <div class="hero-copy">
+
+        <div class="eyebrow">
+          <span class="live-dot"></span>
+          API SECURITY / ZERO TRUST
+        </div>
+
+        <h1>
+          Find the hole
+          <span class="accent">before</span>
+          someone else does.
+        </h1>
+
+        <p class="hero-description">
+          SentinelAPI automatically tests your APIs for authorization
+          flaws, data exposure, authentication weaknesses and other
+          high-impact vulnerabilities.
+        </p>
+
+        <div class="hero-actions">
+
+          <a href="scan-your-api.html" class="btn btn-primary">
+            Run a security scan ↗
+          </a>
+
+          <a href="how-it-works.html" class="btn btn-secondary">
+            See how it works
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- SCANNER MOCKUP -->
+
+      <div class="scanner-wrap" id="scanner">
+
+        <div class="floating-tag tag-one">AUTHORIZED TESTING</div>
+
+        <div class="floating-tag tag-two">SCAN HISTORY</div>
+
+        <div class="scanner">
+
+          <div class="window-bar">
+
+            <div class="window-dots">
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+
+            <div class="window-title">
+              sentinel / latest scan
+            </div>
+
+          </div>
+
+          <div class="scan-status">
+
+            <div>
+              <span>SCAN STATUS</span>
+              <strong id="overview-status">CHECKING</strong>
+            </div>
+
+            <span id="overview-stage" aria-live="polite">Loading scan history...</span>
+
+          </div>
+
+          <div class="progress">
+            <div></div>
+          </div>
+
+          <div class="scan-status">
+            <div><span>DISCOVERED ENDPOINTS</span><strong id="overview-endpoints">&#8212;</strong></div>
+            <div><span>FINDINGS</span><strong id="overview-findings">&#8212;</strong></div>
+          </div>
+
+          <div id="overview-findings-list" class="landing-findings" aria-live="polite">
+            <div class="finding"><div class="finding-left"><div class="finding-icon">i</div><div><small>SCAN HISTORY</small><b id="overview-empty">No scans yet</b></div></div></div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= MARQUEE ================= -->
+
+    <div class="marquee">
+
+      <div class="marquee-track">
+
+        <span>AUTHORIZATION</span>
+        <span class="star">✳</span>
+
+        <span>BOLA / IDOR</span>
+        <span class="star">✳</span>
+
+        <span>DATA EXPOSURE</span>
+        <span class="star">✳</span>
+
+        <span>AUTH MISCONFIGURATION</span>
+        <span class="star">✳</span>
+
+        <span>RATE LIMITING</span>
+        <span class="star">✳</span>
+
+        <span>AUTHORIZATION</span>
+        <span class="star">✳</span>
+
+        <span>BOLA / IDOR</span>
+        <span class="star">✳</span>
+
+        <span>DATA EXPOSURE</span>
+        <span class="star">✳</span>
+
+      </div>
+
+    </div>
+
+
+    <!-- ================= INTRO ================= -->
+
+    <section class="intro reveal">
+
+      <div class="section-label">
+        01 / THE PROBLEM
+      </div>
+
+      <h2>
+        APIs can be
+        <span>perfectly valid</span>
+        and still completely unsafe.
+      </h2>
+
+    </section>
+
+
+    <!-- ================= FEATURES ================= -->
+
+    <section class="features" id="features">
+
+      <div class="section-label reveal">
+        02 / WHAT SENTINEL FINDS
+      </div>
+
+      <div class="feature-grid">
+
+        <article class="feature reveal">
+
+          <div class="feature-number">
+            01 — AUTHORIZATION
+          </div>
+
+          <p>
+            Test whether an authenticated user can manipulate
+            identifiers and access another user's resources.
+          </p>
+
+          <div class="orbit"></div>
+
+          <h3>
+            BOLA / IDOR
+          </h3>
+
+        </article>
+
+
+        <article class="feature reveal">
+
+          <div class="feature-number">
+            02 — DATA
+          </div>
+
+          <p>
+            Detect sensitive fields that should never leave
+            the backend response.
+          </p>
+
+          <div class="scan-lines">
+            <div style="width:90%"></div>
+            <div></div>
+            <div></div>
+            <div></div>
+          </div>
+
+          <h3>
+            Excessive data exposure
+          </h3>
+
+        </article>
+
+
+        <article class="feature reveal">
+
+          <div class="feature-number">
+            03 — ACCESS
+          </div>
+
+          <p>
+            Check protected endpoints for missing or incorrectly
+            enforced authentication.
+          </p>
+
+          <div
+            style="
+              position:absolute;
+              right:50px;
+              top:80px;
+              width:100px;
+              height:100px;
+              border:1px solid #aaa;
+              border-radius:50%;
+              display:grid;
+              place-items:center;
+            "
+          >
+            <span style="font-size:35px">×</span>
+          </div>
+
+          <h3>
+            Authentication misconfiguration
+          </h3>
+
+        </article>
+
+
+        <article class="feature reveal">
+
+          <div class="feature-number">
+            04 — RESILIENCE
+          </div>
+
+          <p>
+            Safely send bounded request bursts and inspect whether
+            the endpoint applies meaningful rate controls.
+          </p>
+
+          <div
+            style="
+              position:absolute;
+              right:50px;
+              top:75px;
+              font-family:'DM Mono';
+              font-size:42px;
+              letter-spacing:-5px;
+            "
+          >
+            429
+          </div>
+
+          <h3>
+            Rate-limit weaknesses
+          </h3>
+
+        </article>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= WORKFLOW ================= -->
+
+    <section class="workflow" id="workflow">
+
+      <div class="section-label reveal">
+        03 / THE WORKFLOW
+      </div>
+
+      <h2 class="reveal">
+        From API
+        <span style="color:var(--acid)">spec</span>
+        to security evidence.
+      </h2>
+
+
+      <div class="steps">
+
+        <div class="step reveal">
+
+          <div class="step-num">
+            01
+          </div>
+
+          <h3>
+            Ingest
+          </h3>
+
+          <p>
+            Provide an OpenAPI / Swagger specification or
+            authorized API traffic.
+          </p>
+
+        </div>
+
+
+        <div class="step reveal">
+
+          <div class="step-num">
+            02
+          </div>
+
+          <h3>
+            Discover
+          </h3>
+
+          <p>
+            Sentinel maps endpoints, methods, parameters,
+            authentication boundaries and resources.
+          </p>
+
+        </div>
+
+
+        <div class="step reveal">
+
+          <div class="step-num">
+            03
+          </div>
+
+          <h3>
+            Attack safely
+          </h3>
+
+          <p>
+            The scanner performs controlled security tests
+            against the explicitly authorized sandbox.
+          </p>
+
+        </div>
+
+
+        <div class="step reveal">
+
+          <div class="step-num">
+            04
+          </div>
+
+          <h3>
+            Prove
+          </h3>
+
+          <p>
+            Every finding is backed by request/response evidence
+            and a reproducible proof of concept.
+          </p>
+
+        </div>
+
+
+        <div class="step reveal">
+
+          <div class="step-num">
+            05
+          </div>
+
+          <h3>
+            Fix
+          </h3>
+
+          <p>
+            Developers get severity, affected endpoint,
+            evidence and actionable remediation context.
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= FINAL CTA ================= -->
+
+    <section class="final" id="start">
+
+      <div class="section-label reveal">
+        04 / START HERE
+      </div>
+
+      <h2 class="reveal">
+        Don't wait for
+        <span>production</span>
+        to find out.
+      </h2>
+
+      <p class="reveal">
+        Scan your authorized API surface. Find the weakness.
+        Understand the evidence. Fix it before it becomes an incident.
+      </p>
+
+      <a href="open-sentinelapi.html" class="btn btn-primary reveal">
+        Launch SentinelAPI →
+      </a>
+
+    </section>
+
+  </main>
+
+
+  <!-- ================= FOOTER ================= -->
+
+  <footer>
+
+    <span>
+      SENTINELAPI © 2026
+    </span>
+
+    <span>
+      ZERO TRUST / API SECURITY
+    </span>
+
+  </footer>
+
+
+  <!-- ================= JAVASCRIPT ================= -->
+
+  <script>
+
+    /* Register GSAP */
+    gsap.registerPlugin(ScrollTrigger);
+
+
+    /* =========================
+       CURSOR
+    ========================= */
+
+    const cursor = document.querySelector(".cursor");
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    let cursorX = 0;
+    let cursorY = 0;
+
+    window.addEventListener("mousemove", (e) => {
+
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+
+    });
+
+    gsap.ticker.add(() => {
+
+      cursorX += (mouseX - cursorX) * 0.15;
+      cursorY += (mouseY - cursorY) * 0.15;
+
+      gsap.set(cursor, {
+        x: cursorX,
+        y: cursorY
+      });
+
+    });
+
+
+    /* =========================
+       NAV SCROLL
+    ========================= */
+
+    window.addEventListener("scroll", () => {
+
+      const nav = document.querySelector("#nav");
+
+      if (window.scrollY > 50) {
+        nav.classList.add("scrolled");
+      } else {
+        nav.classList.remove("scrolled");
+      }
+
+    });
+
+
+    /* =========================
+       HERO ENTRANCE
+    ========================= */
+
+    const heroTimeline = gsap.timeline();
+
+    heroTimeline
+      .from(".hero .eyebrow", {
+        opacity: 0,
+        y: 20,
+        duration: .7
+      })
+      .from(".hero h1", {
+        opacity: 0,
+        y: 80,
+        duration: 1.1,
+        ease: "power4.out"
+      }, "-=.3")
+      .from(".hero-description", {
+        opacity: 0,
+        y: 30,
+        duration: .7
+      }, "-=.5")
+      .from(".hero-actions", {
+        opacity: 0,
+        y: 25,
+        duration: .6
+      }, "-=.4")
+      .from(".scanner", {
+        opacity: 0,
+        y: 100,
+        rotate: 8,
+        duration: 1.2,
+        ease: "power4.out"
+      }, "-=1");
+
+
+    /* =========================
+       FLOATING TAGS
+    ========================= */
+
+    gsap.to(".tag-one", {
+      y: -15,
+      rotation: -4,
+      duration: 2.2,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    });
+
+    gsap.to(".tag-two", {
+      y: 12,
+      rotation: 4,
+      duration: 2.6,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    });
+
+
+    /* =========================
+       SCROLL REVEALS
+    ========================= */
+
+    gsap.utils.toArray(".reveal").forEach((element) => {
+
+      gsap.to(element, {
+
+        opacity: 1,
+        y: 0,
+
+        duration: 1,
+
+        ease: "power3.out",
+
+        scrollTrigger: {
+          trigger: element,
+          start: "top 85%",
+          toggleActions: "play none none reverse"
+        }
+
+      });
+
+    });
+
+
+    /* =========================
+       FEATURE PARALLAX
+    ========================= */
+
+    gsap.utils.toArray(".feature").forEach((card, index) => {
+
+      gsap.to(card, {
+
+        y: index % 2 === 0 ? -20 : 20,
+
+        scrollTrigger: {
+
+          trigger: card,
+
+          start: "top bottom",
+
+          end: "bottom top",
+
+          scrub: 1
+
+        }
+
+      });
+
+    });
+
+
+    /* =========================
+       ORBIT ROTATION
+    ========================= */
+
+    gsap.to(".orbit", {
+
+      rotation: 360,
+
+      duration: 20,
+
+      repeat: -1,
+
+      ease: "none"
+
+    });
+
+
+    /* =========================
+       MAGNETIC BUTTONS
+    ========================= */
+
+    document.querySelectorAll(".btn, .nav-cta").forEach(button => {
+
+      button.addEventListener("mousemove", (e) => {
+
+        const rect = button.getBoundingClientRect();
+
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+
+        gsap.to(button, {
+          x: x * .15,
+          y: y * .15,
+          duration: .3
+        });
+
+      });
+
+      button.addEventListener("mouseleave", () => {
+
+        gsap.to(button, {
+          x: 0,
+          y: 0,
+          duration: .5,
+          ease: "elastic.out(1,.5)"
+        });
+
+      });
+
+    });
+
+
+    /* =========================
+       HOVER CURSOR
+    ========================= */
+
+    document.querySelectorAll("a, button").forEach(el => {
+
+      el.addEventListener("mouseenter", () => {
+
+        gsap.to(cursor, {
+          scale: 3,
+          duration: .25
+        });
+
+      });
+
+      el.addEventListener("mouseleave", () => {
+
+        gsap.to(cursor, {
+          scale: 1,
+          duration: .25
+        });
+
+      });
+
+    });
+
+
+    /* =========================
+       WORKFLOW STEP HOVER
+    ========================= */
+
+    document.querySelectorAll(".step").forEach(step => {
+
+      step.addEventListener("mouseenter", () => {
+
+        gsap.to(step.querySelector("h3"), {
+          x: 12,
+          color: "#c9ff3d",
+          duration: .3
+        }); 
+
+      });
+
+      step.addEventListener("mouseleave", () => {
+
+        gsap.to(step.querySelector("h3"), {
+          x: 0,
+          color: "#faf9f4",
+          duration: .3
+        });
+
+      });
+
+    });
+
+  </script>
+
+<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/overview.js"></script></body>
+</html>

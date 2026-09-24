@@ -1,0 +1,7 @@
+.scanner .finding-top > span, .scanner .finding p { min-width: 0; overflow-wrap: anywhere; }
+.scanner .terminal { max-width: 100%; overflow-x: auto; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .panel-columns { grid-template-columns: 1fr !important; gap: 20px !important; } }
+
+.sev[data-severity="CRITICAL"], .severity[data-severity="CRITICAL"] { color: var(--red); }
+.sev[data-severity="HIGH"], .severity[data-severity="HIGH"] { color: var(--orange); }
+.sev[data-severity="MEDIUM"], .severity[data-severity="MEDIUM"] { color: #ffd166; }
