@@ -11,9 +11,10 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from . import auth
 
 DEFAULT_TARGET = "http://127.0.0.1:8001"
 ALLOWED_ORIGINS = {
@@ -30,15 +31,14 @@ app = FastAPI(title="SentinelAPI", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "null",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
         "http://localhost:5500",
         "http://127.0.0.1:5500",
     ],
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
+    allow_credentials=True,
 )
+app.include_router(auth.router)
 _lock = threading.RLock()
 _scans: dict[str, dict[str, Any]] = {}
 
@@ -74,11 +74,11 @@ def check_origin(url: str, *, allow_path: bool = False) -> str:
         raise HTTPException(403, "Only a plain HTTP sandbox origin is allowed.")
 
     try:
-        loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
+        loopback = ipaddress.ip_address(host).is_loopback
     except ValueError:
         loopback = False
     if not loopback:
-        raise HTTPException(403, "Only explicitly configured loopback sandbox targets are allowed.")
+        raise HTTPException(403, "Only explicitly configured loopback IP targets are allowed.")
 
     origin = f"http://{parsed.netloc}".rstrip("/")
     if origin not in ALLOWED_ORIGINS:
@@ -276,10 +276,34 @@ def _run_scan(scan_id: str, request: dict[str, Any]) -> None:
             ):
                 raise ValueError("Unsupported or invalid OpenAPI/Swagger version.")
 
-            servers = spec.get("servers") or [{"url": target}]
-            api_url = urljoin(f"{target}/", str(servers[0].get("url", target))).rstrip("/")
-            if check_origin(api_url, allow_path=True) != target:
+            if swagger == "2.0":
+                swagger_host = spec.get("host")
+                if swagger_host and str(swagger_host).lower() != urlparse(target).netloc.lower():
+                    raise ValueError("Swagger host is outside the configured sandbox target.")
+                base_path = spec.get("basePath") or "/"
+                parsed_base = urlparse(base_path) if isinstance(base_path, str) else None
+                if (
+                    parsed_base is None
+                    or not parsed_base.path.startswith("/")
+                    or parsed_base.scheme
+                    or parsed_base.netloc
+                    or parsed_base.query
+                    or parsed_base.fragment
+                    or "\\" in base_path
+                    or any(part in {".", ".."} for part in parsed_base.path.split("/"))
+                ):
+                    raise ValueError("Invalid Swagger basePath.")
+                api_url = target + parsed_base.path.rstrip("/")
+            else:
+                servers = spec.get("servers") or [{"url": target}]
+                api_url = urljoin(f"{target}/", str(servers[0].get("url", target))).rstrip("/")
+            try:
+                api_origin = check_origin(api_url, allow_path=True)
+            except HTTPException as exc:
+                raise ValueError("OpenAPI server is outside the configured sandbox target.") from exc
+            if api_origin != target:
                 raise ValueError("OpenAPI server is outside the configured sandbox target.")
+            api_prefix = urlparse(api_url).path.rstrip("/")
 
             endpoints: list[dict[str, Any]] = []
             for path, path_item in (spec.get("paths") or {}).items():
@@ -290,10 +314,13 @@ def _run_scan(scan_id: str, request: dict[str, Any]) -> None:
                     if method not in {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"} or not isinstance(operation, dict):
                         continue
                     security = operation.get("security", spec.get("security"))
+                    full_path = f"{api_prefix}{path}" if api_prefix else path
+                    if not full_path.startswith("/"):
+                        full_path = "/" + full_path
                     endpoints.append({
                         "method": method,
-                        "path": path,
-                        "url": api_url + re.sub(r"\{([^}]+)\}", "1", path),
+                        "path": full_path,
+                        "url": target + re.sub(r"\{([^}]+)\}", "1", full_path),
                         "security_required": bool(security),
                     })
             endpoints = endpoints[:MAX_ENDPOINTS]
@@ -355,7 +382,7 @@ def _run_scan(scan_id: str, request: dict[str, Any]) -> None:
                     if fields:
                         findings.append(_finding(
                             "Excessive data exposure", "HIGH", "medium", endpoint, response,
-                            "Response included sensitive fields: " + ", ".join(fields),
+                            "Sensitive fields were returned to the caller: " + ", ".join(fields) + ". These values can expose credentials or internal personal data and should not be serialized in this response.",
                             "Return only fields required by the caller and never serialize credentials or internal-only fields.",
                             affected_fields=fields,
                         ))
@@ -365,8 +392,8 @@ def _run_scan(scan_id: str, request: dict[str, Any]) -> None:
                     parameter = match.group(1)
                     own_path = endpoint["path"].replace("{" + parameter + "}", own_user_id, 1)
                     other_path = endpoint["path"].replace("{" + parameter + "}", other_user_id, 1)
-                    own_url = api_url + own_path
-                    other_url = api_url + other_path
+                    own_url = target + own_path
+                    other_url = target + other_path
                     try:
                         own_response = safe_request(client, endpoint["method"], own_url, auth_headers)
                         other_response = safe_request(client, endpoint["method"], other_url, auth_headers)
@@ -422,7 +449,7 @@ def _run_scan(scan_id: str, request: dict[str, Any]) -> None:
                     if len(statuses) == 4 and all(200 <= status < 300 for status in statuses) and not has_signal:
                         findings.append(_finding(
                             "Rate-limit weakness", "LOW", "low", endpoint, rate_responses[-1],
-                            "Heuristic signal: four rapid requests were accepted without HTTP 429, Retry-After, or rate-limit headers.",
+                            "Rate-limit weakness detected based on four controlled repeated requests and absence of throttling signals; this is a heuristic, not proof that no limit exists.",
                             "Apply per-identity rate limits and return HTTP 429 with clear retry guidance when limits are exceeded.",
                             extra_evidence={"heuristic": True, "status_sequence": statuses, "rate_limit_headers": rate_headers},
                             heuristic=True,
@@ -442,13 +469,17 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/api/scans")
-def list_scans() -> dict[str, list[dict[str, Any]]]:
+def list_scans(user: dict[str, Any] = Depends(auth.require_user)) -> dict[str, list[dict[str, Any]]]:
     with _lock:
-        return {"scans": sorted(_scans.values(), key=lambda scan: scan["created_at"], reverse=True)}
+        scans = (scan for scan in _scans.values() if scan.get("owner_id") == user["id"])
+        return {"scans": [
+            {key: value for key, value in scan.items() if key != "owner_id"}
+            for scan in sorted(scans, key=lambda item: item["created_at"], reverse=True)
+        ]}
 
 
 @app.post("/api/scans", status_code=202)
-def create_scan(body: ScanRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
+def create_scan(body: ScanRequest, background_tasks: BackgroundTasks, user: dict[str, Any] = Depends(auth.require_user)) -> dict[str, Any]:
     target = check_origin(body.target)
     if body.identity not in {"user-a", "user-b"}:
         raise HTTPException(400, "Select a supported sandbox test identity.")
@@ -461,6 +492,7 @@ def create_scan(body: ScanRequest, background_tasks: BackgroundTasks) -> dict[st
     scan = {
         "id": scan_id,
         "target": target,
+        "owner_id": user["id"],
         "status": "queued",
         "stage": "Queued",
         "endpoints": [],
@@ -473,13 +505,13 @@ def create_scan(body: ScanRequest, background_tasks: BackgroundTasks) -> dict[st
     with _lock:
         _scans[scan_id] = scan
     background_tasks.add_task(_run_scan, scan_id, {**body.model_dump(), "target": target})
-    return scan
+    return {key: value for key, value in scan.items() if key != "owner_id"}
 
 
 @app.get("/api/scans/{scan_id}")
-def get_scan(scan_id: str) -> dict[str, Any]:
+def get_scan(scan_id: str, user: dict[str, Any] = Depends(auth.require_user)) -> dict[str, Any]:
     with _lock:
         scan = _scans.get(scan_id)
-        if scan is None:
+        if scan is None or scan.get("owner_id") != user["id"]:
             raise HTTPException(404, "Scan not found.")
-        return scan
+        return {key: value for key, value in scan.items() if key != "owner_id"}

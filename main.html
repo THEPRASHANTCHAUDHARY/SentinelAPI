@@ -921,9 +921,9 @@
         </div>
 
         <h1>
-          Find the hole
-          <span class="accent">before</span>
-          someone else does.
+          Secure your API
+          <span class="accent">before it reaches</span>
+          production.
         </h1>
 
         <p class="hero-description">
@@ -953,7 +953,7 @@
 
         <div class="floating-tag tag-one">AUTHORIZED TESTING</div>
 
-        <div class="floating-tag tag-two">SCAN HISTORY</div>
+        <div class="floating-tag tag-two">EVIDENCE TRAIL</div>
 
         <div class="scanner">
 
@@ -966,33 +966,49 @@
             </div>
 
             <div class="window-title">
-              sentinel / latest scan
+              sentinel / authorized scan
             </div>
 
           </div>
 
           <div class="scan-status">
-
             <div>
-              <span>SCAN STATUS</span>
-              <strong id="overview-status">CHECKING</strong>
+              <span>SCAN SCOPE</span>
+              <strong>AUTHORIZED</strong>
             </div>
-
-            <span id="overview-stage" aria-live="polite">Loading scan history...</span>
-
+            <span>LOCAL SANDBOX</span>
           </div>
 
-          <div class="progress">
-            <div></div>
+          <div class="finding">
+            <div class="finding-left">
+              <div class="finding-icon">01</div>
+              <div><small>SPECIFICATION / DISCOVERY</small><b>OpenAPI &rarr; Endpoints</b></div>
+            </div>
+            <span class="severity">MAPPED</span>
           </div>
 
-          <div class="scan-status">
-            <div><span>DISCOVERED ENDPOINTS</span><strong id="overview-endpoints">&#8212;</strong></div>
-            <div><span>FINDINGS</span><strong id="overview-findings">&#8212;</strong></div>
+          <div class="finding">
+            <div class="finding-left">
+              <div class="finding-icon">02</div>
+              <div><small>AUTHORIZATION BOUNDARY</small><b>BOLA / IDOR verification</b></div>
+            </div>
+            <span class="severity">VERIFY</span>
           </div>
 
-          <div id="overview-findings-list" class="landing-findings" aria-live="polite">
-            <div class="finding"><div class="finding-left"><div class="finding-icon">i</div><div><small>SCAN HISTORY</small><b id="overview-empty">No scans yet</b></div></div></div>
+          <div class="finding">
+            <div class="finding-left">
+              <div class="finding-icon">03</div>
+              <div><small>IDENTITY / ACCESS</small><b>Authentication testing</b></div>
+            </div>
+            <span class="severity">TEST</span>
+          </div>
+
+          <div class="finding">
+            <div class="finding-left">
+              <div class="finding-icon">04</div>
+              <div><small>REQUEST / RESPONSE</small><b>Evidence + redacted PoC</b></div>
+            </div>
+            <span class="severity">REPORT</span>
           </div>
         </div>
 
@@ -1307,7 +1323,7 @@
         Understand the evidence. Fix it before it becomes an incident.
       </p>
 
-      <a href="open-sentinelapi.html" class="btn btn-primary reveal">
+      <a href="scan-your-api.html" class="btn btn-primary reveal">
         Launch SentinelAPI →
       </a>
 
@@ -1610,5 +1626,5 @@
 
   </script>
 
-<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/overview.js"></script></body>
+<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/overview.js"></script></body>
 </html>

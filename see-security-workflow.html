@@ -20,17 +20,17 @@ footer{padding:30px 5vw;border-top:1px solid var(--line);display:flex;justify-co
 <nav>
 <a class="logo" href="main.html"><span class="logo-mark"><span>+</span></span>SentinelAPI</a>
 <div class="nav-links">
-<a class="" href="scanner.html">Scanner</a>
-<a class="" href="capabilities.html">Capabilities</a>
-<a class="active" href="how-it-works.html">How it works</a>
-<a class="" href="open-sentinelapi.html">Open SentinelAPI</a>
+<a href="scanner.html">Scanner</a>
+<a href="capabilities.html">Capabilities</a>
+<a href="how-it-works.html">How it works</a>
+
 </div>
 <a class="nav-cta" href="scan-your-api.html">Scan your API ↗</a>
 </nav>
 <main class="shell"><div class="hero"><div><div class="eyebrow">06 / SEE THE SECURITY WORKFLOW</div><h1>From API<br><span>surface</span><br>to proof.</h1></div><div class="hero-copy">The security workflow is deliberately simple: ingest an authorized OpenAPI definition, discover the surface, run controlled tests, verify behavior and produce findings your team can act on.</div></div>
 <div class="workflow"><div class="step"><div class="arrow">01</div><h3>Ingest</h3><p>Load OpenAPI / Swagger served by the configured local sandbox.</p></div><div class="step"><div class="arrow">02</div><h3>Discover</h3><p>Build the endpoint inventory and identify testable resources.</p></div><div class="step"><div class="arrow">03</div><h3>Test safely</h3><p>Run supported authorization, data exposure, authentication and rate-limit checks.</p></div><div class="step"><div class="arrow">04</div><h3>Verify</h3><p>Compare expected and observed behavior and reduce false positives.</p></div><div class="step"><div class="arrow">05</div><h3>Report</h3><p>Show severity, evidence and reproducible security-test context.</p></div></div>
 <div class="section"><div class="section-title"><h2>See the<br>security workflow.</h2><p>A finding is useful only when the team can understand what was tested and reproduce the behavior.</p></div><div class="panel reveal"><div class="panel-head"><span>SECURITY WORKFLOW / LATEST RUN</span><span class="status" id="overview-status">CHECKING</span></div><div style="padding:25px 0"><div class="terminal" role="status" aria-live="polite"><span class="green">BACKEND</span> <span id="backend-status">CHECKING</span><br><span class="green">STATUS</span> <span id="overview-stage">Loading scan history?</span><br><span class="green">ENDPOINTS</span> <span id="overview-endpoints">?</span><br><span class="green">FINDINGS</span> <span id="overview-findings">?</span><br><span id="overview-empty" aria-live="polite"></span><div id="overview-findings-list"></div></div></div></div></div>
-<div class="cta"><div><div class="eyebrow">NEXT STEP</div><h2>Open SentinelAPI and start with an authorized target.</h2></div><a class="btn dark" href="open-sentinelapi.html">Open SentinelAPI ↗</a></div></main><footer><span>SENTINELAPI / CONTROLLED API SECURITY</span><span>AUTHORIZED TARGETS ONLY · 2026</span></footer>
+<div class="cta"><div><div class="eyebrow">NEXT STEP</div><h2>Start an authorized API scan.</h2></div><a class="btn dark" href="scan-your-api.html">Start scanning ↗</a></div></main><footer><span>SENTINELAPI / CONTROLLED API SECURITY</span><span>AUTHORIZED TARGETS ONLY · 2026</span></footer>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
@@ -42,4 +42,4 @@ gsap.utils.toArray(".reveal").forEach(el=>gsap.to(el,{scrollTrigger:{trigger:el,
 gsap.utils.toArray(".card,.step,.finding").forEach((el,i)=>gsap.from(el,{scrollTrigger:{trigger:el,start:"top 90%"},y:25,opacity:0,duration:.55,delay:(i%5)*.06,ease:"power2.out"}));
 document.querySelectorAll(".scan-demo").forEach(btn=>btn.addEventListener("click",()=>{const line=document.querySelector(".scan-line");if(line){gsap.to(line,{width:"100%",duration:1.5,ease:"power2.inOut"});btn.textContent="SCAN RUNNING ✓";setTimeout(()=>btn.textContent="START AUTHORIZED SCAN ↗",1700)}}));
 </script>
-<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/overview.js"></script></body></html>
+<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/overview.js"></script></body></html>

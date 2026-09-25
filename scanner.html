@@ -20,10 +20,10 @@ footer{padding:30px 5vw;border-top:1px solid var(--line);display:flex;justify-co
 <nav>
 <a class="logo" href="main.html"><span class="logo-mark"><span>+</span></span>SentinelAPI</a>
 <div class="nav-links">
-<a class="active" href="scanner.html">Scanner</a>
-<a class="" href="capabilities.html">Capabilities</a>
-<a class="" href="how-it-works.html">How it works</a>
-<a class="" href="open-sentinelapi.html">Open SentinelAPI</a>
+<a href="scanner.html">Scanner</a>
+<a href="capabilities.html">Capabilities</a>
+<a href="how-it-works.html">How it works</a>
+
 </div>
 <a class="nav-cta" href="scan-your-api.html">Scan your API ↗</a>
 </nav>
@@ -42,4 +42,4 @@ gsap.from(".panel",{y:50,opacity:0,duration:1,delay:.25,ease:"power3.out"});
 gsap.utils.toArray(".reveal").forEach(el=>gsap.to(el,{scrollTrigger:{trigger:el,start:"top 84%"},y:0,opacity:1,duration:.75,ease:"power3.out"}));
 gsap.utils.toArray(".card,.step,.finding").forEach((el,i)=>gsap.from(el,{scrollTrigger:{trigger:el,start:"top 90%"},y:25,opacity:0,duration:.55,delay:(i%5)*.06,ease:"power2.out"}));
 </script>
-<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/scan-page.js"></script><script src="assets/js/overview.js"></script></body></html>
+<script src="assets/js/config.js"></script><script src="assets/js/api.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/scan-page.js"></script><script src="assets/js/overview.js"></script></body></html>

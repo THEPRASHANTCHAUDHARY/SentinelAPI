@@ -14,3 +14,6 @@ node_modules/
 dist/
 build/
 coverage/
+
+# Local authentication data
+backend/sentinelapi_auth.sqlite3*

@@ -4,6 +4,7 @@
   let allowedTargets = [];
   let backendReady = false;
   let scanInProgress = false;
+  let lastScan = null;
 
   function showError(message) { const box=byId("scan-error"); if(box){box.hidden=false;box.textContent=message;} window.dispatchEvent(new CustomEvent("sentinelapi:scan-error",{detail:message})); }
   function statusLabel(value) { const el=byId("scan-status"); if(el)el.textContent=String(value||"idle").toUpperCase(); window.dispatchEvent(new CustomEvent("sentinelapi:scan-state",{detail:value||"idle"})); }
@@ -31,8 +32,10 @@
     }
   }
   function update(scan) {
+    lastScan=scan;
     statusLabel(scan.status);renderTerminal(scan);renderEndpoints(scan);renderFindings(scan);
     const count=byId("scan-endpoint-count");if(count)count.textContent=String(scan.endpoint_count??0);
+    const findingCount=byId("scan-finding-count");if(findingCount)findingCount.textContent=String(scan.finding_count??0);
     const stage=byId("scan-stage");if(stage)stage.textContent=scan.stage||scan.status||"idle";
     window.dispatchEvent(new CustomEvent("sentinelapi:scan-update", { detail: scan }));
   }
@@ -50,7 +53,9 @@
     return current;
   }
   async function startScan(button,idleLabel) {
-    if(scanInProgress)return;scanInProgress=true;button.disabled=true;button.textContent="SCANNING...";resetResults();let scanCreated=false;
+    if(scanInProgress)return;
+    if(!window.SentinelAuth||!await window.SentinelAuth.requireAuth())return;
+    scanInProgress=true;button.disabled=true;button.textContent="SCANNING...";resetResults();let scanCreated=false;
     try {
       let health;
       try { health=await window.SentinelAPI.health(); backendReady=true; }
@@ -71,7 +76,13 @@
       }
       scanCreated=true;update(created);const final=await watchScan(created);if(final.status==="failed")showError(final.error||"Scan failed. Correct the input and retry.");
       button.dataset.scanResult=final.status==="completed"?"completed":"failed";
-    }catch(error){showError(error.message||"Unable to start scan.");if(!scanCreated)statusLabel("failed");button.dataset.scanResult="failed";}
+    }catch(error){
+      const message=error.message||"Unable to start scan.";
+      showError(message);
+      if(!scanCreated)update({status:"failed",stage:"Scan could not be started.",endpoint_count:0,finding_count:0,endpoints:[],findings:[],error:message});
+      else if(lastScan)update({...lastScan,status:"unknown",stage:"Unable to retrieve scan status. Reload to check scan history.",error:message});
+      button.dataset.scanResult="failed";
+    }
     finally{button.disabled=false;button.textContent=button.dataset.scanResult==="completed"?"SCAN COMPLETE":button.dataset.scanResult==="failed"?"RETRY SCAN \u2197":idleLabel;scanInProgress=false;}
   }
   async function init() {
@@ -79,10 +90,7 @@
     const query=new URLSearchParams(location.search);if(query.has("spec")){try{byId("scan-spec").value=new URL(query.get("spec")).href;}catch{}}
     try{const health=await window.SentinelAPI.health();allowedTargets=health.allowed_targets||[];backendReady=true;const el=byId("scan-health");if(el)el.textContent="AVAILABLE";}
     catch(error){const el=byId("scan-health");if(el)el.textContent="UNAVAILABLE";showError(error.message);}
-    const history=await window.SentinelAPI.listScans().catch(()=>null);if(!history?.scans?.length)return;
-    const latest=history.scans[0];update(latest);
-    if(latest.status==="failed")showError(latest.error||"Scan failed.");
-    if(["queued","running"].includes(latest.status)){scanInProgress=true;button.disabled=true;button.textContent="SCANNING...";try{const final=await watchScan(latest);if(final.status==="failed")showError(final.error||"Scan failed.");}catch(error){showError(error.message);}finally{button.disabled=false;button.textContent=idleLabel;scanInProgress=false;}}
+
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();

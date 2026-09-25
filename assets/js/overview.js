@@ -34,8 +34,12 @@
     if(["queued","running"].includes(scan.status))pollTimer=setTimeout(loadLatest,3000);
   }
   async function loadLatest(){
-    try{const response=await window.SentinelAPI.listScans();set("backend-status","CONNECTED");set("backend-status-detail","Connected to the local SentinelAPI backend.");render(response.scans?.[0]||null);}
-    catch{set("backend-status","UNAVAILABLE");set("backend-status-detail","SentinelAPI scanner is unavailable.");set("overview-empty","SentinelAPI scanner is unavailable.");}
+    try{
+      const user=await window.SentinelAuth?.getCurrentUser();
+      set("backend-status","CONNECTED");set("backend-status-detail","Connected to the local SentinelAPI backend.");
+      if(!user){render(null);return;}
+      const response=await window.SentinelAPI.listScans();render(response.scans?.[0]||null);
+    }catch{set("backend-status","UNAVAILABLE");set("backend-status-detail","SentinelAPI scanner is unavailable.");set("overview-empty","SentinelAPI scanner is unavailable.");}
   }
   window.addEventListener("sentinelapi:scan-update",event=>render(event.detail));
   window.addEventListener("sentinelapi:scan-error",event=>{if(event.detail)set("overview-empty",event.detail);});
