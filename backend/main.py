@@ -12,7 +12,6 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from . import auth
@@ -29,9 +28,6 @@ MAX_ENDPOINTS = 250
 MAX_TESTED_ENDPOINTS = 50
 
 app = FastAPI(title="SentinelAPI", version="0.1.0")
-from pathlib import Path
-
-PUBLIC_DIR = Path(__file__).resolve().parents[1] / "public"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -519,6 +515,3 @@ def get_scan(scan_id: str, user: dict[str, Any] = Depends(auth.require_user)) ->
         if scan is None or scan.get("owner_id") != user["id"]:
             raise HTTPException(404, "Scan not found.")
         return {key: value for key, value in scan.items() if key != "owner_id"}
-    
-if PUBLIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="frontend")
