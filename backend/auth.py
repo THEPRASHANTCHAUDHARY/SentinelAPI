@@ -15,14 +15,17 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field, SecretStr
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
-AUTH_DB_PATH = Path(os.getenv(
-    "SENTINELAPI_AUTH_DB",
-    str(Path(__file__).with_name("sentinelapi_auth.sqlite3")),
-))
+IS_VERCEL = os.getenv("VERCEL", "").lower() in {"1", "true"}
+_DEFAULT_AUTH_DB = (
+    Path("/tmp/sentinelapi_auth.sqlite3")
+    if IS_VERCEL
+    else Path(__file__).with_name("sentinelapi_auth.sqlite3")
+)
+AUTH_DB_PATH = Path(os.getenv("SENTINELAPI_AUTH_DB") or _DEFAULT_AUTH_DB)
 SESSION_COOKIE = "sentinelapi_session"
 SESSION_TTL_SECONDS = 8 * 60 * 60
 PASSWORD_ITERATIONS = 310_000
-COOKIE_SECURE = os.getenv("SENTINELAPI_AUTH_COOKIE_SECURE", "").lower() == "true"
+COOKIE_SECURE = IS_VERCEL or os.getenv("SENTINELAPI_AUTH_COOKIE_SECURE", "").lower() == "true"
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -68,10 +71,19 @@ def _connect() -> sqlite3.Connection:
 
 @contextmanager
 def _database() -> Any:
-    connection = _connect()
+    try:
+        connection = _connect()
+    except sqlite3.Error as exc:
+        raise HTTPException(503, "Authentication storage is temporarily unavailable.") from exc
     try:
         yield connection
         connection.commit()
+    except sqlite3.IntegrityError:
+        connection.rollback()
+        raise
+    except sqlite3.Error as exc:
+        connection.rollback()
+        raise HTTPException(503, "Authentication storage is temporarily unavailable.") from exc
     except Exception:
         connection.rollback()
         raise

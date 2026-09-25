@@ -11,12 +11,21 @@
     } catch {
       throw new Error("SentinelAPI is unavailable. Start the local backend and retry.");
     }
-    let data;
-    try { data = await response.json(); }
-    catch { throw new Error("SentinelAPI returned an invalid response."); }
+    const contentType = response.headers.get("content-type") || "";
+    let data = null;
+    if (contentType.includes("application/json")) {
+      try { data = await response.json(); } catch { /* Use a safe status-based message below. */ }
+    } else {
+      try { await response.text(); } catch { /* The response body is not needed for safe errors. */ }
+    }
     if (!response.ok) {
-      const detail = data.detail;
-      throw new Error(typeof detail === "string" ? detail : "Check your details and try again.");
+      const detail = response.status < 500 && typeof data?.detail === "string" ? data.detail : null;
+      throw new Error(detail || (response.status >= 500
+        ? "Authentication service is temporarily unavailable. Please try again."
+        : `SentinelAPI request failed (${response.status}).`));
+    }
+    if (!data || typeof data !== "object") {
+      throw new Error("Authentication service returned an unexpected response. Please try again.");
     }
     return data;
   }

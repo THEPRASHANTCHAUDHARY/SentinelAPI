@@ -1,3 +1,4 @@
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -141,6 +142,26 @@ class AuthFlow(unittest.TestCase):
         self.assertIn("max-age=0", response.headers["set-cookie"].lower())
         self.assertEqual(self.client.get("/api/auth/me").json(), {"authenticated": False, "user": None})
         self.assertEqual(self.client.get("/api/scans").status_code, 401)
+
+    def test_secure_cookie_attributes_when_secure_cookie_setting_is_enabled(self):
+        self.assertEqual(self.signup().status_code, 201)
+        with patch.object(auth, "COOKIE_SECURE", True):
+            response = self.signin()
+        self.assertEqual(response.status_code, 200)
+        cookie = response.headers["set-cookie"].lower()
+        self.assertIn("httponly", cookie)
+        self.assertIn("secure", cookie)
+        self.assertIn("samesite=lax", cookie)
+        self.assertIn("path=/", cookie)
+        self.assertIn("max-age=28800", cookie)
+
+    def test_auth_storage_errors_return_safe_json(self):
+        with patch.object(auth, "_connect", side_effect=sqlite3.OperationalError("/secret/db path is read-only")):
+            response = self.signup()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json(), {"detail": "Authentication storage is temporarily unavailable."})
+        self.assertNotIn("secret", response.text.lower())
+        self.assertNotIn("sqlite", response.text.lower())
 
     def test_expired_session_is_rejected_server_side(self):
         self.signup()

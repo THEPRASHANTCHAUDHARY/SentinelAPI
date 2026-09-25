@@ -174,12 +174,12 @@ Set these Vercel environment variables for an HTTPS demo deployment:
 
 | Variable | Value | Purpose / limitation |
 |---|---|---|
-| `SENTINELAPI_AUTH_DB` | `/tmp/sentinelapi_auth.sqlite3` | Makes the SQLite auth database writable in a Vercel Function. `/tmp` is ephemeral and instance-local, so accounts and sessions are not durable. |
-| `SENTINELAPI_AUTH_COOKIE_SECURE` | `true` | Marks the auth session cookie Secure for HTTPS. |
+| `SENTINELAPI_AUTH_DB` | `/tmp/sentinelapi_auth.sqlite3` | Optional. Vercel defaults to this writable path automatically. `/tmp` is ephemeral and instance-local, so accounts and sessions are not durable or shared between function instances. |
+| `SENTINELAPI_AUTH_COOKIE_SECURE` | `true` | Optional on Vercel (Secure is enabled automatically there); set this to `true` for HTTPS when self-hosting. |
 
 No API key or other external-service secret is required by the current code. `SENTINEL_API_URL` is a JavaScript window setting, not a Vercel environment variable; the deployed UI defaults to its own origin. `SENTINELAPI_ALLOWED_ORIGINS` only permits loopback IPs, so setting it to a public URL will not enable remote scanning.
 
-**Deployment limitation:** the scanner's default target is `http://127.0.0.1:8001`, but the Vercel Function cannot reach the developer's local sandbox. Target validation intentionally rejects public hosts. The FastAPI service and UI can be deployed, but scans against the included sandbox will not work remotely without a separately designed authorized-target/network configuration. Scan state is also process memory, and the SQLite database under `/tmp` is not durable. Use external persistent storage and revise the target architecture before relying on hosted scans or accounts.
+**Deployment limitation:** the scanner's default target is `http://127.0.0.1:8001`, but the Vercel Function cannot reach the developer's local sandbox. Target validation intentionally rejects public hosts. The FastAPI service and UI can be deployed, but scans against the included sandbox will not work remotely without a separately designed authorized-target/network configuration. Scan state is also process memory, and the SQLite database under `/tmp` is not durable. Use external persistent storage and revise the target architecture before relying on hosted scans or accounts. For reliable hosted authentication across serverless instances, replace SQLite with a shared external database such as PostgreSQL; `/tmp` is only a writable demo fallback.
 
 The `public/` directory is generated during the Vercel build and is not the source of the frontend. Edit the root HTML and `assets/` files, then let the build script refresh the public copies.
 
