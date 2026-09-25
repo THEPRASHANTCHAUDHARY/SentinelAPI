@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend import auth, main as scanner
@@ -154,6 +155,35 @@ class AuthFlow(unittest.TestCase):
         self.assertIn("samesite=lax", cookie)
         self.assertIn("path=/", cookie)
         self.assertIn("max-age=28800", cookie)
+
+    def test_frontend_pages_and_assets_are_served_without_exposing_source_files(self):
+        paths = (
+            "/", "/index.html", "/main.html", "/scanner.html", "/signin.html",
+            "/signup.html", "/capabilities.html", "/how-it-works.html",
+            "/scan-your-api.html", "/see-security-workflow.html",
+            "/assets/styles/responsive.css", "/assets/js/config.js", "/assets/js/auth.js",
+        )
+        with TestClient(scanner.app) as client:
+            for path in paths:
+                with self.subTest(path=path):
+                    self.assertEqual(client.get(path).status_code, 200)
+            self.assertEqual(client.get("/backend/main.py").status_code, 404)
+            self.assertEqual(client.get("/README.md").status_code, 404)
+
+    def test_unhandled_api_errors_return_safe_json(self):
+        test_app = FastAPI()
+        test_app.add_exception_handler(Exception, scanner.unexpected_error_handler)
+
+        @test_app.get("/fail")
+        def fail():
+            raise RuntimeError("/secret/config.env private-token")
+
+        with TestClient(test_app, raise_server_exceptions=False) as client:
+            response = client.get("/fail")
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json(), {"detail": "An unexpected server error occurred."})
+        self.assertNotIn("secret", response.text.lower())
+        self.assertNotIn("private-token", response.text)
 
     def test_auth_storage_errors_return_safe_json(self):
         with patch.object(auth, "_connect", side_effect=sqlite3.OperationalError("/secret/db path is read-only")):

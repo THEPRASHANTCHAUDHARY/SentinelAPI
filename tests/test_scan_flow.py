@@ -297,8 +297,20 @@ class ScanFlow(unittest.TestCase):
             with TestClient(scanner.app) as client:
                 scan = self.create_and_get_scan(client, test_classes=["exposure"])
         self.assertEqual(scan["status"], "failed")
-        self.assertEqual(scan["error"], "Sandbox specification request timed out.")
+        self.assertEqual(scan["error"], "Sandbox request timed out.")
         self.assertNotIn("Traceback", scan["error"])
+
+    def test_unexpected_scan_errors_do_not_expose_internal_details(self):
+        with patch.object(scanner, "safe_request", side_effect=RuntimeError("/tmp/private.sqlite3 secret")):
+            with TestClient(scanner.app) as client:
+                scan = self.create_and_get_scan(client, test_classes=["exposure"])
+        self.assertEqual(scan["status"], "failed")
+        self.assertEqual(
+            scan["error"],
+            "An unexpected error occurred while scanning the authorized sandbox.",
+        )
+        self.assertNotIn("private.sqlite3", scan["error"])
+        self.assertNotIn("secret", scan["error"])
 
     def test_openapi_server_cannot_override_authorized_target(self):
         spec_url = self.target + "/external-server.json"

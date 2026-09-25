@@ -1,5 +1,5 @@
 (() => {
-  const base = (window.SENTINEL_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+  const base = (window.SENTINEL_API_URL || "").replace(/\/$/, "");
   async function request(path, options = {}) {
     let response;
     try {
@@ -9,7 +9,9 @@
         headers: { "Content-Type": "application/json", ...(options.headers || {}) }
       });
     } catch {
-      throw new Error("SentinelAPI is unavailable. Start the local backend and retry.");
+      throw new Error(window.SENTINELAPI_IS_HOSTED
+        ? "Authentication service is temporarily unavailable. Please try again."
+        : "SentinelAPI is unavailable. Start the local backend and retry.");
     }
     const contentType = response.headers.get("content-type") || "";
     let data = null;

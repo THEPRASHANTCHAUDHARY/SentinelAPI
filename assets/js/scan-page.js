@@ -5,6 +5,7 @@
   let backendReady = false;
   let scanInProgress = false;
   let lastScan = null;
+  const hostedScanNotice = "Hosted access supports sign-in, API status, and workflow review. Active scanning requires the local SentinelAPI backend and its loopback sandbox; run the project locally to scan the included sandbox.";
 
   function showError(message) { const box=byId("scan-error"); if(box){box.hidden=false;box.textContent=message;} window.dispatchEvent(new CustomEvent("sentinelapi:scan-error",{detail:message})); }
   function statusLabel(value) { const el=byId("scan-status"); if(el)el.textContent=String(value||"idle").toUpperCase(); window.dispatchEvent(new CustomEvent("sentinelapi:scan-state",{detail:value||"idle"})); }
@@ -53,13 +54,20 @@
     return current;
   }
   async function startScan(button,idleLabel) {
+    if(window.SENTINELAPI_IS_HOSTED){showError(hostedScanNotice);return;}
     if(scanInProgress)return;
     if(!window.SentinelAuth||!await window.SentinelAuth.requireAuth())return;
     scanInProgress=true;button.disabled=true;button.textContent="SCANNING...";resetResults();let scanCreated=false;
     try {
       let health;
       try { health=await window.SentinelAPI.health(); backendReady=true; }
-      catch { backendReady=false; const connection=byId("scan-health"); if(connection)connection.textContent="UNAVAILABLE"; throw new Error("SentinelAPI scanner is unavailable. Start the local backend and retry."); }
+      catch {
+        backendReady=false;
+        const connection=byId("scan-health"); if(connection)connection.textContent="UNAVAILABLE";
+        throw new Error(window.SENTINELAPI_IS_HOSTED
+          ? "Hosted SentinelAPI service is unavailable. Please try again later."
+          : "SentinelAPI scanner is unavailable. Start the local backend and retry.");
+      }
       allowedTargets=health.allowed_targets||[];
       const connection=byId("scan-health"); if(connection)connection.textContent="AVAILABLE";
       const environment=document.querySelector(".form select:not(#scan-identity)");
@@ -87,6 +95,7 @@
   }
   async function init() {
     const button=byId("start-scan");if(!button)return;const idleLabel=button.textContent.trim();button.addEventListener("click",event=>{event.preventDefault();startScan(button,idleLabel);});
+    if(window.SENTINELAPI_IS_HOSTED){const notice=byId("deployment-scan-notice");if(notice){notice.textContent=hostedScanNotice;notice.hidden=false;}}
     const query=new URLSearchParams(location.search);if(query.has("spec")){try{byId("scan-spec").value=new URL(query.get("spec")).href;}catch{}}
     try{const health=await window.SentinelAPI.health();allowedTargets=health.allowed_targets||[];backendReady=true;const el=byId("scan-health");if(el)el.textContent="AVAILABLE";}
     catch(error){const el=byId("scan-health");if(el)el.textContent="UNAVAILABLE";showError(error.message);}

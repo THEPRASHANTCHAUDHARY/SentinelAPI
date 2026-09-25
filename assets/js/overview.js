@@ -36,10 +36,10 @@
   async function loadLatest(){
     try{
       const user=await window.SentinelAuth?.getCurrentUser();
-      set("backend-status","CONNECTED");set("backend-status-detail","Connected to the local SentinelAPI backend.");
+      set("backend-status","CONNECTED");set("backend-status-detail",window.SENTINELAPI_IS_HOSTED?"Connected to the hosted SentinelAPI service. Active scans require the local sandbox.":"Connected to the local SentinelAPI backend.");
       if(!user){render(null);return;}
       const response=await window.SentinelAPI.listScans();render(response.scans?.[0]||null);
-    }catch{set("backend-status","UNAVAILABLE");set("backend-status-detail","SentinelAPI scanner is unavailable.");set("overview-empty","SentinelAPI scanner is unavailable.");}
+    }catch{set("backend-status","UNAVAILABLE");set("backend-status-detail",window.SENTINELAPI_IS_HOSTED?"Hosted SentinelAPI service is unavailable.":"SentinelAPI scanner is unavailable.");set("overview-empty","SentinelAPI service is unavailable.");}
   }
   window.addEventListener("sentinelapi:scan-update",event=>render(event.detail));
   window.addEventListener("sentinelapi:scan-error",event=>{if(event.detail)set("overview-empty",event.detail);});

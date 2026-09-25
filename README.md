@@ -179,11 +179,13 @@ Set these Vercel environment variables for an HTTPS demo deployment:
 
 No API key or other external-service secret is required by the current code. `SENTINEL_API_URL` is a JavaScript window setting, not a Vercel environment variable; the deployed UI defaults to its own origin. `SENTINELAPI_ALLOWED_ORIGINS` only permits loopback IPs, so setting it to a public URL will not enable remote scanning.
 
-**Deployment limitation:** the scanner's default target is `http://127.0.0.1:8001`, but the Vercel Function cannot reach the developer's local sandbox. Target validation intentionally rejects public hosts. The FastAPI service and UI can be deployed, but scans against the included sandbox will not work remotely without a separately designed authorized-target/network configuration. Scan state is also process memory, and the SQLite database under `/tmp` is not durable. Use external persistent storage and revise the target architecture before relying on hosted scans or accounts. For reliable hosted authentication across serverless instances, replace SQLite with a shared external database such as PostgreSQL; `/tmp` is only a writable demo fallback.
+**Deployment limitation:** the scanner's default target is `http://127.0.0.1:8001`, but the Vercel Function cannot reach the developer's local sandbox. Target validation intentionally rejects public hosts. The hosted UI supports authentication, API status, and workflow review; the scan page explains that active scanning requires local execution with the included sandbox. Scan state is also process memory, and the SQLite database under `/tmp` is not durable. Use external persistent storage and revise the target architecture before relying on hosted scans or accounts. For reliable hosted authentication across serverless instances, replace SQLite with a shared external database such as PostgreSQL; `/tmp` is only a writable demo fallback.
 
 The `public/` directory is generated during the Vercel build and is not the source of the frontend. Edit the root HTML and `assets/` files, then let the build script refresh the public copies.
 
-## Demo Flow
+## Local Demo Flow
+
+Run the frontend, scanner backend, and vulnerable sandbox locally as described above. Active scanning is intentionally a local workflow.
 
 1. Open <http://127.0.0.1:5500/main.html>.
 2. Create an account on **Sign Up**, then sign in. Scans require an authenticated session.

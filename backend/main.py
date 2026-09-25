@@ -12,8 +12,8 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import httpx
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -43,6 +43,15 @@ FRONTEND_PAGES = {
     "signin.html",
     "signup.html",
 }
+@app.exception_handler(Exception)
+async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return a stable, non-sensitive JSON error for unhandled API failures."""
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected server error occurred."},
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -474,8 +483,24 @@ def _run_scan(scan_id: str, request: dict[str, Any]) -> None:
                 scan_id, status="completed", stage="Completed", findings=findings,
                 finding_count=len(findings), completed_at=_timestamp(),
             )
-    except Exception as exc:
+    except ValueError as exc:
         _update_scan(scan_id, status="failed", stage="Failed", error=str(exc))
+    except httpx.TimeoutException:
+        _update_scan(scan_id, status="failed", stage="Failed", error="Sandbox request timed out.")
+    except httpx.HTTPError:
+        _update_scan(
+            scan_id,
+            status="failed",
+            stage="Failed",
+            error="Unable to complete a request to the authorized sandbox.",
+        )
+    except Exception:
+        _update_scan(
+            scan_id,
+            status="failed",
+            stage="Failed",
+            error="An unexpected error occurred while scanning the authorized sandbox.",
+        )
 
 
 @app.get("/api/health")
