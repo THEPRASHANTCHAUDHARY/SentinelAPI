@@ -158,13 +158,30 @@ Invoke-RestMethod http://127.0.0.1:8001/openapi.json
 
 The scanner backend's health route is `/api/health`; the sandbox health route is `/health`.
 
-The frontend uses `http://127.0.0.1:8000` by default. If the backend runs at another address, update `assets/js/config.js`. The default authorized target origin is `http://127.0.0.1:8001`. To configure additional loopback IP origins in PowerShell before starting the backend, set `SENTINELAPI_ALLOWED_ORIGINS` to a comma-separated list, for example:
+When the frontend is served locally on port 5500, it uses `http://127.0.0.1:8000` for the backend. On other hosts, including Vercel, it defaults to the current origin. The default authorized target origin is `http://127.0.0.1:8001`. To configure additional loopback IP origins in PowerShell before starting the backend, set `SENTINELAPI_ALLOWED_ORIGINS` to a comma-separated list, for example:
 
 ```powershell
 $env:SENTINELAPI_ALLOWED_ORIGINS = "http://127.0.0.1:8001,http://127.0.0.1:8002"
 ```
 
 Only loopback IP origins are accepted by target validation.
+
+## Vercel Deployment
+
+The repository root `pyproject.toml` selects `backend.main:app`. Vercel uses Python 3.12 as pinned by `.python-version`. Its configured build command runs `scripts/sync_vercel_static.py`, which copies the existing root-level HTML pages and `assets/` into `public/` so Vercel can serve them as static files. The frontend uses the local backend URL on port 5500 and the current origin on other hosts.
+
+Set these Vercel environment variables for an HTTPS demo deployment:
+
+| Variable | Value | Purpose / limitation |
+|---|---|---|
+| `SENTINELAPI_AUTH_DB` | `/tmp/sentinelapi_auth.sqlite3` | Makes the SQLite auth database writable in a Vercel Function. `/tmp` is ephemeral and instance-local, so accounts and sessions are not durable. |
+| `SENTINELAPI_AUTH_COOKIE_SECURE` | `true` | Marks the auth session cookie Secure for HTTPS. |
+
+No API key or other external-service secret is required by the current code. `SENTINEL_API_URL` is a JavaScript window setting, not a Vercel environment variable; the deployed UI defaults to its own origin. `SENTINELAPI_ALLOWED_ORIGINS` only permits loopback IPs, so setting it to a public URL will not enable remote scanning.
+
+**Deployment limitation:** the scanner's default target is `http://127.0.0.1:8001`, but the Vercel Function cannot reach the developer's local sandbox. Target validation intentionally rejects public hosts. The FastAPI service and UI can be deployed, but scans against the included sandbox will not work remotely without a separately designed authorized-target/network configuration. Scan state is also process memory, and the SQLite database under `/tmp` is not durable. Use external persistent storage and revise the target architecture before relying on hosted scans or accounts.
+
+The `public/` directory is generated during the Vercel build and is not the source of the frontend. Edit the root HTML and `assets/` files, then let the build script refresh the public copies.
 
 ## Demo Flow
 
@@ -234,6 +251,8 @@ SentinelAPI/
 |-- tests/
 |   |-- test_auth_flow.py
 |   `-- test_scan_flow.py
+|-- scripts/
+|   `-- sync_vercel_static.py
 |-- main.html
 |-- index.html
 |-- scanner.html
@@ -244,11 +263,13 @@ SentinelAPI/
 |-- signin.html
 |-- signup.html
 |-- requirements.txt
+|-- pyproject.toml
+|-- .python-version
 |-- README.md
 `-- .gitignore
 ```
 
-`index.html` redirects to `main.html`. Local auth data is stored in `backend/sentinelapi_auth.sqlite3`, which is ignored by Git and is created when the auth database is initialized.
+`index.html` redirects to `main.html`. The Vercel build generates `public/` as a mirror of the root HTML pages and `assets/`. Local auth data is stored in `backend/sentinelapi_auth.sqlite3`, which is ignored by Git and is created when the auth database is initialized.
 
 ## Testing
 

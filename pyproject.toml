@@ -1,0 +1,5 @@
+[tool.vercel]
+entrypoint = "backend.main:app"
+
+[tool.vercel.scripts]
+build = "python scripts/sync_vercel_static.py"

@@ -42,4 +42,4 @@ gsap.utils.toArray(".reveal").forEach(el=>gsap.to(el,{scrollTrigger:{trigger:el,
 gsap.utils.toArray(".card,.step,.finding").forEach((el,i)=>gsap.from(el,{scrollTrigger:{trigger:el,start:"top 90%"},y:25,opacity:0,duration:.55,delay:(i%5)*.06,ease:"power2.out"}));
 document.querySelectorAll(".scan-demo").forEach(btn=>btn.addEventListener("click",()=>{const line=document.querySelector(".scan-line");if(line){gsap.to(line,{width:"100%",duration:1.5,ease:"power2.inOut"});btn.textContent="SCAN RUNNING ✓";setTimeout(()=>btn.textContent="START AUTHORIZED SCAN ↗",1700)}}));
 </script>
-<script src="assets/js/auth.js"></script></body></html>
+<script src="assets/js/config.js"></script><script src="assets/js/auth.js"></script></body></html>
