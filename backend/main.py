@@ -7,12 +7,15 @@ import re
 import threading
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from . import auth
 
@@ -28,6 +31,18 @@ MAX_ENDPOINTS = 250
 MAX_TESTED_ENDPOINTS = 50
 
 app = FastAPI(title="SentinelAPI", version="0.1.0")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FRONTEND_PAGES = {
+    "index.html",
+    "main.html",
+    "scanner.html",
+    "capabilities.html",
+    "how-it-works.html",
+    "scan-your-api.html",
+    "see-security-workflow.html",
+    "signin.html",
+    "signup.html",
+}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -515,3 +530,23 @@ def get_scan(scan_id: str, user: dict[str, Any] = Depends(auth.require_user)) ->
         if scan is None or scan.get("owner_id") != user["id"]:
             raise HTTPException(404, "Scan not found.")
         return {key: value for key, value in scan.items() if key != "owner_id"}
+
+
+@app.get("/", include_in_schema=False)
+def frontend_root() -> FileResponse:
+    return FileResponse(PROJECT_ROOT / "index.html", media_type="text/html")
+
+
+@app.get("/{page_name}.html", include_in_schema=False)
+def frontend_page(page_name: str) -> FileResponse:
+    filename = f"{page_name}.html"
+    if filename not in FRONTEND_PAGES:
+        raise HTTPException(404, "Page not found.")
+    return FileResponse(PROJECT_ROOT / filename, media_type="text/html")
+
+
+app.mount(
+    "/assets",
+    StaticFiles(directory=PROJECT_ROOT / "assets"),
+    name="frontend-assets",
+)
